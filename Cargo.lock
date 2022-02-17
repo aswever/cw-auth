@@ -163,13 +163,14 @@ dependencies = [
 
 [[package]]
 name = "cw-auth"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "base64",
  "bech32",
  "cosmwasm-crypto 0.16.3",
  "cosmwasm-std",
  "ripemd",
+ "schemars",
  "serde",
  "serde-json-wasm",
  "sha2 0.10.1",

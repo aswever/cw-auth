@@ -4,18 +4,19 @@ use cosmwasm_std::Timestamp;
 use cosmwasm_crypto::secp256k1_verify;
 use ripemd::{Digest, Ripemd160};
 use serde::de::DeserializeOwned;
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 use sha2::Sha256;
 use std::str::from_utf8;
+use schemars::JsonSchema;
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 /// some message along with signed authorization token
-pub struct MessageWithAuthorization<T> {
+pub struct MsgWithAuth<T> {
     pub authorization: Authorization,
     pub message: T,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 /// an ADR-36 signed document along with a signature and pubkey of the signer
 pub struct Authorization {
     pub document: String,
@@ -25,7 +26,7 @@ pub struct Authorization {
 
 #[derive(Deserialize, Clone, Debug)]
 /// a message with extracted and validated auth token
-pub struct AuthorizedMessage<S, T> {
+pub struct Authorized<S, T> {
     pub auth_token: AuthToken<S>,
     pub message: T,
 }
@@ -59,10 +60,10 @@ struct SignValue {
 /// takes a message with a signed and encoded auth token, and returns the message along
 /// with the validated and decoded auth token.
 pub fn authorize<M, A: DeserializeOwned>(
-    message: MessageWithAuthorization<M>,
+    message: MsgWithAuth<M>,
     block_time: Timestamp,
-) -> Result<AuthorizedMessage<A, M>, AuthError> {
-    Ok(AuthorizedMessage {
+) -> Result<Authorized<A, M>, AuthError> {
+    Ok(Authorized {
         message: message.message,
         auth_token: validate(message.authorization, block_time)?,
     })
