@@ -1,6 +1,9 @@
 use crate::error::AuthError;
 use bech32::{self, u5, ToBase32};
 use cosmwasm_std::Timestamp;
+#[cfg(target_arch = "wasm32")]
+use cosmwasm_std::{Api, ExternalApi};
+#[cfg(not(target_arch = "wasm32"))]
 use cosmwasm_crypto::secp256k1_verify;
 use ripemd::{Digest, Ripemd160};
 use serde::de::DeserializeOwned;
@@ -135,7 +138,16 @@ fn validate_document_signature(
     hasher.update(&document);
     let document_hash: &[u8] = &hasher.finalize();
 
-    if let Ok(true) = secp256k1_verify(document_hash, signature, pubkey) {
+    #[cfg(target_arch = "wasm32")]
+    let verification = {
+        let api = ExternalApi {};
+        api.secp256k1_verify(document_hash, signature, pubkey)
+    };
+
+    #[cfg(not(target_arch = "wasm32"))]
+    let verification = secp256k1_verify(document_hash, signature, pubkey);
+
+    if let Ok(true) = verification {
         Ok(true)
     } else {
         Err(AuthError::InvalidSignature)

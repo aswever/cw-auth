@@ -1,4 +1,5 @@
 use cosmwasm_std::{StdError, VerificationError};
+#[cfg(not(target_arch = "wasm32"))]
 use cosmwasm_crypto::CryptoError;
 use thiserror::Error;
 
@@ -7,6 +8,7 @@ pub enum AuthError {
     #[error("{0}")]
     StdError(#[from] StdError),
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[error("{0}")]
     CryptoError(#[from] CryptoError),
 
