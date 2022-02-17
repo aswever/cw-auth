@@ -1,8 +1,8 @@
 [package]
 name = "cw-auth"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["aswever <aswever@protonmail.com>"]
-edition = "2021"
+edition = "2018"
 description = "a utility for integrating off-chain auth with your cosmwasm contracts"
 license = "Apache-2.0"
 
