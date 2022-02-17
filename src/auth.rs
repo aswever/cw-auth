@@ -1,10 +1,10 @@
 use crate::error::AuthError;
 use bech32::{self, u5, ToBase32};
-use cosmwasm_std::Timestamp;
+use cosmwasm_std::{Timestamp, Addr};
 #[cfg(target_arch = "wasm32")]
 use cosmwasm_std::{Api, ExternalApi};
 #[cfg(not(target_arch = "wasm32"))]
-use cosmwasm_crypto::secp256k1_verify;
+use cosmwasm_crypto::{secp256k1_verify};
 use ripemd::{Digest, Ripemd160};
 use serde::de::DeserializeOwned;
 use serde::{Serialize, Deserialize};
@@ -35,9 +35,10 @@ pub struct Authorized<S, T> {
 }
 
 #[derive(Deserialize, Clone, Debug)]
-/// auth token including address of the signer, expiration time, and any metadata
+/// auth token including addresses of signer and agent, expiration time, and any metadata
 pub struct AuthToken<T> {
-    pub address: String,
+    pub user: String,
+    pub agent: String,
     pub expires: u64,
     pub meta: T,
 }
@@ -64,20 +65,23 @@ struct SignValue {
 /// with the validated and decoded auth token.
 pub fn authorize<M, A: DeserializeOwned>(
     message: MsgWithAuth<M>,
+    provider: Addr,
     block_time: Timestamp,
 ) -> Result<Authorized<A, M>, AuthError> {
     Ok(Authorized {
         message: message.message,
-        auth_token: validate(message.authorization, block_time)?,
+        auth_token: validate(message.authorization, provider, block_time)?,
     })
 }
 
 /// validate a signed authorization token
 ///
-/// this will ensure that the token is signed by the right address and has not expired
-/// and will return the decoded token from within the document if it is valid
+/// this will ensure that the token is signed by the right address, provided by the right
+/// address, and unexpired, and will return the decoded token from within the document if
+/// it is valid.
 pub fn validate<A: DeserializeOwned>(
     authorization: Authorization,
+    provider: Addr,
     block_time: Timestamp,
 ) -> Result<AuthToken<A>, AuthError> {
     let pubkey = base64::decode(authorization.pubkey)?;
@@ -92,7 +96,8 @@ pub fn validate<A: DeserializeOwned>(
 
     let auth_token = extract_token(&document)?;
     validate_token_expires(&auth_token, block_time)?;
-    validate_token_address(&auth_token, signer)?;
+    validate_token_user(&auth_token, signer)?;
+    validate_token_agent(&auth_token, provider.as_str())?;
 
     Ok(auth_token)
 }
@@ -119,9 +124,18 @@ fn validate_token_expires<A>(
     }
 }
 
-/// check that the address in the token is the one we expect
-fn validate_token_address<A>(token: &AuthToken<A>, address: &str) -> Result<bool, AuthError> {
-    if token.address == *address {
+/// check that the token is signed by the specified user
+fn validate_token_user<A>(token: &AuthToken<A>, signer: &str) -> Result<bool, AuthError> {
+    if token.user == *signer {
+        Ok(true)
+    } else {
+        Err(AuthError::TokenAddressMismatch)
+    }
+}
+
+/// check that the agent address in the token is the one we expect
+fn validate_token_agent<A>(token: &AuthToken<A>, agent: &str) -> Result<bool, AuthError> {
+    if token.agent == *agent {
         Ok(true)
     } else {
         Err(AuthError::TokenAddressMismatch)
