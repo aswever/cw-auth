@@ -1,6 +1,6 @@
 use crate::error::AuthError;
 use bech32::{self, u5, ToBase32};
-use cosmwasm_std::{Timestamp, Addr};
+use cosmwasm_std::{Timestamp, Addr, MessageInfo, Env};
 #[cfg(target_arch = "wasm32")]
 use cosmwasm_std::{Api, ExternalApi};
 #[cfg(not(target_arch = "wasm32"))]
@@ -37,8 +37,8 @@ pub struct Authorized<S, T> {
 #[derive(Deserialize, Clone, Debug)]
 /// auth token including addresses of signer and agent, expiration time, and any metadata
 pub struct AuthToken<T> {
-    pub user: String,
-    pub agent: String,
+    pub user: Addr,
+    pub agent: Addr,
     pub expires: u64,
     pub meta: T,
 }
@@ -55,7 +55,7 @@ struct SignMessage {
 
 #[derive(Deserialize)]
 struct SignValue {
-    signer: String,
+    signer: Addr,
     data: String,
 }
 
@@ -65,12 +65,12 @@ struct SignValue {
 /// with the validated and decoded auth token.
 pub fn authorize<M, A: DeserializeOwned>(
     message: MsgWithAuth<M>,
-    provider: Addr,
-    block_time: Timestamp,
+    info: &MessageInfo,
+    env: &Env,
 ) -> Result<Authorized<A, M>, AuthError> {
     Ok(Authorized {
         message: message.message,
-        auth_token: validate(message.authorization, provider, block_time)?,
+        auth_token: validate(message.authorization, &info.sender, env.block.time)?,
     })
 }
 
@@ -81,7 +81,7 @@ pub fn authorize<M, A: DeserializeOwned>(
 /// it is valid.
 pub fn validate<A: DeserializeOwned>(
     authorization: Authorization,
-    provider: Addr,
+    provider: &Addr,
     block_time: Timestamp,
 ) -> Result<AuthToken<A>, AuthError> {
     let pubkey = base64::decode(authorization.pubkey)?;
@@ -97,7 +97,7 @@ pub fn validate<A: DeserializeOwned>(
     let auth_token = extract_token(&document)?;
     validate_token_expires(&auth_token, block_time)?;
     validate_token_user(&auth_token, signer)?;
-    validate_token_agent(&auth_token, provider.as_str())?;
+    validate_token_agent(&auth_token, provider)?;
 
     Ok(auth_token)
 }
@@ -125,7 +125,7 @@ fn validate_token_expires<A>(
 }
 
 /// check that the token is signed by the specified user
-fn validate_token_user<A>(token: &AuthToken<A>, signer: &str) -> Result<bool, AuthError> {
+fn validate_token_user<A>(token: &AuthToken<A>, signer: &Addr) -> Result<bool, AuthError> {
     if token.user == *signer {
         Ok(true)
     } else {
@@ -134,7 +134,7 @@ fn validate_token_user<A>(token: &AuthToken<A>, signer: &str) -> Result<bool, Au
 }
 
 /// check that the agent address in the token is the one we expect
-fn validate_token_agent<A>(token: &AuthToken<A>, agent: &str) -> Result<bool, AuthError> {
+fn validate_token_agent<A>(token: &AuthToken<A>, agent: &Addr) -> Result<bool, AuthError> {
     if token.agent == *agent {
         Ok(true)
     } else {
@@ -169,8 +169,8 @@ fn validate_document_signature(
 }
 
 /// check that the stated signer corresponds to the given public key
-fn validate_signer_pubkey(address: &str, pubkey: Vec<u8>) -> Result<bool, AuthError> {
-    let (_hrp, data, _variant) = bech32::decode(address)?;
+fn validate_signer_pubkey(address: &Addr, pubkey: Vec<u8>) -> Result<bool, AuthError> {
+    let (_hrp, data, _variant) = bech32::decode(address.as_str())?;
     let hashed_pubkey = hash_pubkey(pubkey);
     if data == hashed_pubkey {
         Ok(true)
