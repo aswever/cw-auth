@@ -129,7 +129,7 @@ fn validate_token_user<A>(token: &AuthToken<A>, signer: &Addr) -> Result<bool, A
     if token.user == *signer {
         Ok(true)
     } else {
-        Err(AuthError::TokenAddressMismatch)
+        Err(AuthError::TokenUserMismatch)
     }
 }
 
@@ -138,7 +138,7 @@ fn validate_token_agent<A>(token: &AuthToken<A>, agent: &Addr) -> Result<bool, A
     if token.agent == *agent {
         Ok(true)
     } else {
-        Err(AuthError::TokenAddressMismatch)
+        Err(AuthError::TokenAgentMismatch)
     }
 }
 

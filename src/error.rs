@@ -36,6 +36,9 @@ pub enum AuthError {
     #[error("Token expired")]
     TokenExpired,
 
-    #[error("Token address does not match signer address")]
-    TokenAddressMismatch,
+    #[error("Token user address does not match signer address")]
+    TokenUserMismatch,
+
+    #[error("Token agent address does not match provider address")]
+    TokenAgentMismatch,
 }
