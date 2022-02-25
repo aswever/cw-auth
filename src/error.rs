@@ -1,6 +1,6 @@
-use cosmwasm_std::{StdError, VerificationError};
 #[cfg(not(target_arch = "wasm32"))]
 use cosmwasm_crypto::CryptoError;
+use cosmwasm_std::{StdError, VerificationError};
 use thiserror::Error;
 
 #[derive(Error, Debug)]

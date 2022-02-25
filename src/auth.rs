@@ -1,16 +1,16 @@
 use crate::error::AuthError;
 use bech32::{self, u5, ToBase32};
-use cosmwasm_std::{Timestamp, Addr, MessageInfo, Env};
+#[cfg(not(target_arch = "wasm32"))]
+use cosmwasm_crypto::secp256k1_verify;
+use cosmwasm_std::{Addr, Env, MessageInfo, Timestamp};
 #[cfg(target_arch = "wasm32")]
 use cosmwasm_std::{Api, ExternalApi};
-#[cfg(not(target_arch = "wasm32"))]
-use cosmwasm_crypto::{secp256k1_verify};
 use ripemd::{Digest, Ripemd160};
+use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::str::from_utf8;
-use schemars::JsonSchema;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 /// some message along with signed authorization token
@@ -103,9 +103,7 @@ pub fn validate<A: DeserializeOwned>(
 }
 
 /// grab the token from inside the SignDoc
-fn extract_token<A: DeserializeOwned>(
-    document: &SignDoc,
-) -> Result<AuthToken<A>, AuthError> {
+fn extract_token<A: DeserializeOwned>(document: &SignDoc) -> Result<AuthToken<A>, AuthError> {
     let token = &document.msgs[0].value.data;
     let token = base64::decode(token)?;
     let token = from_utf8(&token)?.to_string();
